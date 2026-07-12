@@ -193,9 +193,36 @@ function startCamera() {
         fps: 30, // Yüksek FPS
         qrbox: { width: 280, height: 140 },
         aspectRatio: 1.777778,
-        formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
+        // TÜM 1D BARKODLAR + QR Code
+        formatsToSupport: [
+            // 1D Barkodlar (Çizgili)
+            Html5QrcodeSupportedFormats.CODE_128,        // Lojistik/Depo standart
+            Html5QrcodeSupportedFormats.CODE_39,         // Askeri, otomotiv
+            Html5QrcodeSupportedFormats.CODE_93,         // Posta servisleri
+            Html5QrcodeSupportedFormats.CODABAR,         // Kütüphane, kan bankaları
+            Html5QrcodeSupportedFormats.EAN_13,          // Ürün barkodları (13 haneli)
+            Html5QrcodeSupportedFormats.EAN_8,           // Küçük ürünler (8 haneli)
+            Html5QrcodeSupportedFormats.UPC_A,           // ABD/Kanada ürünleri
+            Html5QrcodeSupportedFormats.UPC_E,           // UPC kompakt versiyon
+            Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION, // Ek bilgi kodları
+            Html5QrcodeSupportedFormats.ITF,             // Palet/koli barkodları
+            Html5QrcodeSupportedFormats.RSS_14,          // GS1 DataBar
+            Html5QrcodeSupportedFormats.RSS_EXPANDED,    // GS1 DataBar genişletilmiş
+            // 2D Barkodlar (İhtiyaç durumunda)
+            Html5QrcodeSupportedFormats.QR_CODE          // Karekod
+        ],
         experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
+            useBarCodeDetectorIfSupported: true  // Native API - Donanım Hızlandırma
+        },
+        rememberLastUsedCamera: true,
+        // Video kısıtlamaları - performans için
+        videoConstraints: {
+            facingMode: "environment",
+            focusMode: "continuous",
+            advanced: [
+                { focusMode: "continuous" },
+                { zoom: 1.0 }
+            ]
         }
     };
     
@@ -211,7 +238,7 @@ function startCamera() {
         elements.startCameraBtn.style.display = 'none';
         elements.stopCameraBtn.style.display = 'inline-flex';
         elements.scanControl.style.display = 'block';
-        showToast('📷 Kamera başlatıldı - Okuma için butona basılı tutun', 'success');
+        showToast('📷 Kamera başlatıldı - Tüm barkod türleri destekleniyor', 'success');
         playSound('success');
     }).catch((err) => {
         console.error('Kamera başlatma hatası:', err);
