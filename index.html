@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1976d2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Depo Sevkiyat Kontrolü - Barkod Okuma Uygulaması">
+    <title>Depo Kontrol</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <!-- SheetJS CDN -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- html5-qrcode CDN -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+    <!-- Ana Container -->
+    <div class="app-container">
+        
+        <!-- Üst Başlık ve Sayaçlar -->
+        <header class="header">
+            <h1 class="app-title">📦 Depo Kontrol</h1>
+            <div class="stats-container">
+                <div class="stat-box">
+                    <span class="stat-label">Toplam</span>
+                    <span class="stat-value" id="totalCount">0</span>
+                </div>
+                <div class="stat-box success">
+                    <span class="stat-label">Okunan</span>
+                    <span class="stat-value" id="scannedCount">0</span>
+                </div>
+                <div class="stat-box warning">
+                    <span class="stat-label">Kalan</span>
+                    <span class="stat-value" id="remainingCount">0</span>
+                </div>
+                <div class="stat-box error">
+                    <span class="stat-label">Fazla</span>
+                    <span class="stat-value" id="extraCount">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Excel Yükleme Bölümü -->
+        <section class="upload-section" id="uploadSection">
+            <div class="upload-box">
+                <input type="file" id="fileInput" accept=".xlsx,.csv" style="display: none;">
+                <button class="btn-primary" id="uploadBtn">
+                    📂 Excel Dosyası Yükle
+                </button>
+                <p class="upload-info">Excel dosyanızın <strong>ilk sütununda</strong> 9 haneli barkodlar (M123456789 veya 123456789), <strong>ikinci sütununda</strong> lokasyonlar olmalıdır. Sütun adları önemli değil.</p>
+            </div>
+        </section>
+
+        <!-- Kamera Tarama Bölümü -->
+        <section class="scanner-section" id="scannerSection" style="display: none;">
+            
+            <!-- Kamera Kontrolleri -->
+            <div class="camera-controls">
+                <button class="btn-success" id="startCameraBtn">
+                    📷 Kamerayı Başlat
+                </button>
+                <button class="btn-danger" id="stopCameraBtn" style="display: none;">
+                    ⏹️ Kamerayı Durdur
+                </button>
+                <button class="btn-secondary" id="changeFileBtn">
+                    🔄 Dosya Değiştir
+                </button>
+            </div>
+
+            <!-- Son Okuma Bilgisi -->
+            <div class="last-scan-info" id="lastScanInfo" style="display: none;">
+                <div class="scan-result">
+                    <strong>Son Okuma:</strong> <span id="lastBarcode">-</span>
+                </div>
+                <div class="scan-location">
+                    <strong>Lokasyon:</strong> <span id="lastLocation">-</span>
+                </div>
+            </div>
+
+            <!-- Kamera Vizörü -->
+            <div class="camera-viewport">
+                <div id="reader"></div>
+            </div>
+
+            <!-- Okuma Kontrol Butonu - Kameranın Altında -->
+            <div class="scan-control" id="scanControl" style="display: none;">
+                <button class="btn-scan" id="scanBtn">
+                    <span class="scan-icon">🔴</span>
+                    <span class="scan-text">Basılı Tut ve Oku</span>
+                </button>
+                <p class="scan-instruction">👆 Yukarıda barkodu görün, butona basılı tutun</p>
+            </div>
+
+            <!-- Tarama Geçmişi -->
+            <div class="scan-history">
+                <h3>📋 Tarama Geçmişi</h3>
+                <div class="history-list" id="historyList">
+                    <p class="empty-message">Henüz okutma yapılmadı</p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Özet Rapor (Opsiyonel) -->
+        <section class="report-section" id="reportSection" style="display: none;">
+            <button class="btn-info" id="showReportBtn">
+                📊 Özet Rapor Göster
+            </button>
+        </section>
+
+    </div>
+
+    <!-- Toast Bildirimleri -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Modal - Özet Rapor -->
+    <div class="modal" id="reportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📊 Özet Rapor</h2>
+                <button class="modal-close" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="reportContent">
+                <!-- Rapor içeriği dinamik olarak eklenecek -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Ana JavaScript -->
+    <script src="app.js"></script>
+    
+    <!-- PWA Kayıt -->
+    <script>
+        // Service Worker Kaydı
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker kayıt başarılı:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ Service Worker kayıt hatası:', error);
+                    });
+            });
+        }
+
+        // Ana Ekrana Ekleme İpucu
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('💡 Uygulama ana ekrana eklenebilir');
+        });
+    </script>
+</body>
+</html>
